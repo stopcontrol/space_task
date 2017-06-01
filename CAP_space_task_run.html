@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="jspsych.js"></script>
+    <script src="plugins/WMC_space_task_acquisition.js"></script>
+    <script src="plugins/WMC_training_space_task_retrieval.js"></script>
+    <script src="plugins/WMC_space_task_retrieval.js"></script>
+    <script src="plugins/jsPsych-single-stim.js"></script>
+    <script src="plugins/fixation.js"></script>
+    <script src="plugins/jspsych-text.js"></script>
+    <script src="plugins/jspsych-survey-text.js"></script>
+    <link rel="stylesheet" href="css/jspsych_space_task.css"></link>
+  </head>
+  <script>
+
+  //Lege Stimuli fest
+  var stimuli = ['img/A.png','img/B.png','img/C.png','img/D.png','img/E.png', 'img/F.png'];
+
+  // Welcome Message
+  var welcome =  {
+    type: 'text',
+    text: [
+      '<p><img src="img/omfix.png"></img><br>Willkommen zur n\u00e4chsten Aufgabe. Bitte klicke Enter um zu beginnen.',
+      ],
+    show_clickable_nav: true
+  }
+
+  var code = {
+    type: 'survey-text',
+    questions: ["Bitte trage Deinen Personencode hier sorgf\u00e4lltig ein."],
+
+  }
+
+  var intro =  {
+    type: 'text',
+    text: [
+      'Bei dieser Aufgabe geht es darum, sich sechs konzentrisch angeordnete Buchstaben zu merken und <br> danach f\u00fcr einen bestimmten Buchstaben anzugeben, wo er sich vorhin befand. <br> <br> Bitte richte Deinen Blick auf das im Anschlu\u00df pr\u00e4sentierte Fixationskreuz. <br> Gleich darauf werden dir die sechs Buchstaben angezeigt. Versuche sie Dir zu merken. <br><br>Bitte Dr\u00fccke Enter, wenn Du <b> alles verstanden hast.</b>',
+      ],
+    show_clickable_nav: true
+  }
+
+  var intro_trainig =  {
+    type: 'text',
+    text: [
+      'Mit Enter startest Du den Trainingsdurchgang',
+      ],
+    show_clickable_nav: true
+  }
+
+  var fixation =  {
+    type: 'fixation',
+    is_html: true,
+    stimulus: '<p style="font-size:600%;">+</p>',
+    timing_response: 900,
+  }
+
+//Definition einzelnes Trial
+  var trials = {
+    type: 'space-task-aquisition',
+    stimuli: stimuli,
+    timing_response: 100,
+    prompt:'<p>Versuche, Dir die Positionen der Buchstaben zu merken <br> eine Sekunde Zeit</p>',
+    prompt_location: 'above'
+
+  };
+
+//Abruf
+  var retrieval = {
+    type: 'space-task-retrieval',
+    stimuli: stimuli,
+    timing_response: -1,
+    prompt:'<p style="font-size:85%;">Bitte klicke an die Stelle, an der du den Buchstaben vorhin gesehen hast</p>',
+    prompt_location: 'above'
+  };
+
+//Abruf in Training Session
+  var training_retrieval = {
+    type: 'training-space-task-retrieval',
+    stimuli: stimuli,
+    timing_response: -1,
+    prompt:'<p style="font-size:85%;">Bitte klicke an die Stelle, an der du den Buchstaben vorhin gesehen hast</p>',
+    prompt_location: 'above'
+  };
+
+// Reminder nach Testdurchlauf
+  var reminder_teststart =  {
+    type: 'text',
+    text: [
+      '<p>Das Training ist nun Beendet, du kannst den eigentlichen Testdurchlauf durch Dr\u00fccken von <b>Enter</b> starten! <br><br> Viel Erfolg!!</p>',
+      ],
+    show_clickable_nav: true
+  }
+
+//definiere einzelnen Testblock bzw. fasse einzelne Instanzen zu Block zusammen
+
+// Loope 180 mal durch den Testblock
+var counter_loop = 0;
+var duration = 50;
+var loop_block = {
+   timeline: [fixation, trials, fixation, retrieval],
+   loop_function: function(number){
+       if (counter_loop < duration){ //Setze auf 180!!!!!
+         counter_loop++;
+         console.log('Testdurchgang num: ' + counter_loop);
+           return true;
+       } else {
+           return false;
+       }
+   }
+}
+
+
+var counter_train = 0;
+var counter_right = [];
+var training_block = {
+   timeline: [fixation, trials, fixation, training_retrieval],
+   loop_function: function(number){
+       if (counter_train < 5){ //Setze auf 180!!!!!
+         console.log('durchgang training num: ' + counter_train);
+           return true;
+       } else {
+           return false;
+       }
+   }
+}
+
+  jsPsych.init({
+    fullscreen: true,
+    timeline:[welcome, code, intro, intro_trainig, training_block, reminder_teststart,loop_block],
+
+    on_finish: function(){
+      var personcode = jsPsych.data.get().values()[1].responses.slice(7,15);
+      var name = "spaceTask_" + personcode + ".csv"
+      //Show Data
+      var score = (counter_right / duration);
+      alert('Dein Ergebnis: ' + Math.round(score * 100) + '% richtig. Das sind ' + counter_right + ' aus ' + (duration + 1) + ' richtigen Antworten – Vielen Dank!');
+      jsPsych.data.displayData();
+      var dat = jsPsych.data.get().csv();
+
+      // File-Save Funktion zur Hilfe -> jsPsych.data.get().csv not working in jsPsych 6
+      function saveTextToFile(textstr, filename) {
+        var blobToSave = new Blob([textstr], {
+          type: 'text/plain'
+        });
+        var blobURL = "";
+        if (typeof window.webkitURL !== 'undefined') {
+          blobURL = window.webkitURL.createObjectURL(blobToSave);
+        } else {
+          blobURL = window.URL.createObjectURL(blobToSave);
+        }
+
+        var display_element = jsPsych.getDisplayElement();
+
+        display_element.insertAdjacentHTML('beforeend','<a id="jspsych-download-as-text-link" style="display:none;" download="'+filename+'" href="'+blobURL+'">click to download</a>');
+        document.getElementById('jspsych-download-as-text-link').click();
+      }
+
+
+      // Funktion Call
+      saveTextToFile(dat, name)
+    }
+  });
+
+
+  </script>
+</html>
